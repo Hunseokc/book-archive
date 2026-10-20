@@ -1,0 +1,36 @@
+# nginx 공식 이미지가 기동 시 ${API_UPSTREAM} 을 환경변수 값으로 치환해 conf.d/default.conf 를 만든다.
+#   docker compose: http://server:8000
+#   Cloud Run     : https://<server 서비스>.run.app
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 개발 시 vite proxy 와 동일하게 /api 를 Kotlin 서버로 넘긴다.
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        # Cloud Run 은 Host 헤더로 서비스를 찾으므로 업스트림 호스트를 그대로 보낸다.
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_ssl_server_name on;
+    }
+
+    # 서비스 워커·매니페스트·index.html 은 항상 최신본을 받도록 캐시하지 않는다.
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+    }
+
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache";
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+}

@@ -1,0 +1,53 @@
+server:
+  port: 8000
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/book_archive}
+    username: ${DB_USER:book}
+    password: ${DB_PASSWORD:book}
+    # Supabase 세션 풀러(프로젝트당 풀 크기 제한)를 고려해 연결을 최소화한다.
+    # 앱 전체 최대 연결 수 = DB_POOL_MAX × Cloud Run 최대 인스턴스 수
+    hikari:
+      pool-name: book-archive
+      maximum-pool-size: ${DB_POOL_MAX:2}
+      # 요청이 없으면 연결을 하나도 잡아두지 않는다 (idle-timeout 후 반납)
+      minimum-idle: 0
+      idle-timeout: 30000
+      # 풀러·네트워크가 끊은 연결을 오래 들고 있지 않도록 짧게 교체
+      max-lifetime: 300000
+      # 풀이 가득 찼을 때 무한정 기다리지 말고 10초 뒤 실패
+      connection-timeout: 10000
+      # 20초 넘게 반납 안 된 연결은 스택트레이스와 함께 경고 로그 (누수 추적용)
+      leak-detection-threshold: 20000
+      data-source-properties:
+        # pg_stat_activity 에서 이 앱의 연결을 구분하기 위함
+        ApplicationName: book-archive
+  jpa:
+    # 스키마는 Flyway(src/main/resources/db/migration)가 관리한다.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    # Flyway 도입 전부터 쓰던 DB를 처음 붙일 때만 true 로 켠다 (V1 을 적용된 것으로 보고 V2 부터 실행).
+    # 새 DB(Supabase 등)에서 켜두면 Supabase 기본 객체 때문에 "비어있지 않은 스키마"로 판단돼 V1 을 건너뛴다.
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: 1
+  jackson:
+    # 기존 FastAPI 응답과 동일하게 snake_case 로 직렬화 (cover_url, created_at ...)
+    property-naming-strategy: SNAKE_CASE
+
+logging:
+  level:
+    # DEBUG 로 바꾸면 30초마다 "Pool stats (total, active, idle, waiting)" 를 남긴다
+    com.zaxxer.hikari.pool.HikariPool: ${HIKARI_LOG_LEVEL:INFO}
+
+app:
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173}
+  google-books-api-key: ${GOOGLE_BOOKS_API_KEY:}
+  auth:
+    # HS256 서명 키 (32바이트 이상). Supabase(레거시 JWT secret)로 옮길 때는 이 값을 교체한다.
+    jwt-secret: ${JWT_SECRET}
+    token-ttl: ${JWT_TTL:7d}
+    # false 여도 첫 번째 사용자는 가입할 수 있다.
+    signup-enabled: ${SIGNUP_ENABLED:false}

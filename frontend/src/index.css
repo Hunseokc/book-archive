@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  background-color: #f9fafb;
+  -webkit-tap-highlight-color: transparent;
+  /* 홈 화면 앱(standalone)에서 노치·홈 인디케이터 영역 피하기 */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* iOS Safari는 16px 미만 입력창에 포커스하면 화면을 확대하므로 모바일에서는 16px로 고정 */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
